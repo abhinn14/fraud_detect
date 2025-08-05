@@ -1,8 +1,4 @@
 sender,receiver,amount,created_at,time,is_fraud,risk_level,ip_address,location,id
-You,Shourya ,25000,,2025-07-25T11:28:39.703Z,False,Medium,14.139.223.170,"Kolkata, West Bengal",74790505426
-You,Abhinn,700,,2025-07-25T11:28:01.607Z,False,Low,14.139.223.170,"Kolkata, West Bengal",19379885117
-You,Rishi,5000,,2025-07-25T04:56:50.507Z,False,Low,152.58.181.150,"Kolkata, West Bengal",61305958574
-You,Anjul,500,,2025-07-25T04:55:11.077Z,False,Low,152.58.181.150,"Kolkata, West Bengal",95375670200
 You,Advik,731,2025-06-27T13:28:32.321Z,13,False,Low,23.8.248.166,"Kolkata, West Bengal",66617711358
 You,Yashvi,102,2025-06-02T13:06:59.862Z,13,False,Low,23.8.248.166,"Kolkata, West Bengal",85005686513
 You,Ayaan,71,2025-06-06T09:21:42.855Z,9,False,Low,23.8.248.166,"Kolkata, West Bengal",58300141111
