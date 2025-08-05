@@ -47,7 +47,7 @@ app.post("/transactions", async (req, res) => {
     const { risk, is_fraud } = flaskRes.data;
     const tx = new Transaction({ ...txData, created_at: isoTime, risk_level: risk, is_fraud });
 
-    if (risk === "Low" || risk === "High") {
+    if (risk === "Low" || isk === "Medium" || risk === "High") {
       appendTransaction(tx);
       return res.status(201).json({ tx });
     }
