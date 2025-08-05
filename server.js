@@ -8,7 +8,7 @@ import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 const CSV_FILE = "./data/transactions.csv";
 const FLASK_URL = "https://fraudy.onrender.com/assess";
 
