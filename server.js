@@ -41,15 +41,16 @@ app.post("/transactions", async (req, res) => {
     const isoTime = txData.time;
     if (txData.time && typeof txData.time === 'string') {
         const date = new Date(txData.time);
+        // Convert to UTC hour (0-23), which is what the Python server expects
         txData.time = date.getUTCHours(); 
     }
     const flaskRes = await axios.post(FLASK_URL, txData);
     const { risk, is_fraud } = flaskRes.data;
     const tx = new Transaction({ ...txData, created_at: isoTime, risk_level: risk, is_fraud });
 
-    if (risk === "Low" || risk === "Medium" || risk === "High") {
+    if (risk === "Low" || risk === "High") {
       appendTransaction(tx);
-      return res.status(201).json({ tx });
+      return res.status(201).json({ tx , verification_required: false });
     }
 
     if (risk === "Medium") {
@@ -92,6 +93,7 @@ app.post("/verify-transaction", async (req, res) => {
     return res.status(500).json({ verified: false, error: "Verification error" });
   }
 });
+
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
