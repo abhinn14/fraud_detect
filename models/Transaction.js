@@ -1,6 +1,7 @@
 // models/Transaction.js
 export class Transaction {
   constructor({
+    id,
     sender,
     receiver,
     amount,
@@ -9,8 +10,9 @@ export class Transaction {
     is_fraud,
     risk_level,
     ip_address,
-    location
+    location,
   }) {
+    this.id = id;
     this.sender     = sender;
     this.receiver   = receiver;
     this.amount     = Number(amount) || "-";
