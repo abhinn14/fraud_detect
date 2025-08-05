@@ -51,7 +51,7 @@ app.post("/transactions", async (req, res) => {
     }
   } catch (err) {
     console.error("Error in /transactions:", err);
-    res.status(err.response?.status || 500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
