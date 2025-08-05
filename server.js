@@ -37,18 +37,12 @@ app.get("/transactions", (req, res) => {
 app.post("/transactions", async (req, res) => {
   try {
     const txData = { ...req.body };
-    const incomingUtcTime = txData.time;
-    const date = new Date(incomingUtcTime);
-
-    // 2. Define the target timezone.
-    const timeZone = 'Asia/Kolkata';
-
-    // 3. Format the date into an ISO string for the IST timezone.
-    // The "XXX" format specifier adds the offset like "+05:30".
-    const createdAtIST = formatInTimeZone(date, timeZone, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+    
     const isoTime = txData.time;
-    txData.time = date.getUTCHours(); 
-
+    if (txData.time && typeof txData.time === 'string') {
+        const date = new Date(txData.time);
+        txData.time = date.getUTCHours(); 
+    }
     const flaskRes = await axios.post(FLASK_URL, txData);
     const { risk, is_fraud } = flaskRes.data;
     const tx = new Transaction({ ...txData, created_at: isoTime, risk_level: risk, is_fraud });
