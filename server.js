@@ -36,6 +36,12 @@ app.get("/transactions", (req, res) => {
 app.post("/transactions", async (req, res) => {
   try {
     const txData = { ...req.body };
+
+    if (txData.time && typeof txData.time === 'string') {
+        const date = new Date(txData.time);
+        // Convert to UTC hour (0-23), which is what the Python server expects
+        txData.time = date.getUTCHours(); 
+    }
     const flaskRes = await axios.post(FLASK_URL, txData);
     const { risk, is_fraud } = flaskRes.data;
     const isoTime = txData.time;
