@@ -3,16 +3,16 @@ import fs from "fs";
 import cors from "cors";
 import bodyParser from "body-parser";
 import axios from "axios";
-// --- CHANGE: Import the formatter ---
-import { formatInTimeZone } from 'date-fns-tz';
 import { Transaction } from "./models/Transaction.js";
 import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
+import { formatInTimeZone } from 'date-fns-tz';
 
 const app = express();
 const PORT = 5000;
 const CSV_FILE = "./data/transactions.csv";
 const FLASK_URL = "https://fraudy.onrender.com/assess";
+
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -37,48 +37,36 @@ app.get("/transactions", (req, res) => {
 app.post("/transactions", async (req, res) => {
   try {
     const txData = { ...req.body };
+    const incomingUtcTime = txData.time;
+    const date = new Date(incomingUtcTime);
 
-    // --- START: MODIFIED SECTION ---
-    if (txData.time && typeof txData.time === 'string') {
-        const incomingDate = new Date(txData.time);
+    // 2. Define the target timezone.
+    const timeZone = 'Asia/Kolkata';
 
-        // Define your target timezone (IANA name for India)
-        const timeZone = 'Asia/Kolkata';
+    // 3. Format the date into an ISO string for the IST timezone.
+    // The "XXX" format specifier adds the offset like "+05:30".
+    const createdAtIST = formatInTimeZone(date, timeZone, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+    const isoTime = txData.time;
+    txData.time = date.getUTCHours(); 
 
-        // Format the date into an ISO string for the IST timezone
-        // The 'XXX' part adds the offset like +05:30
-        const createdAtIST = formatInTimeZone(incomingDate, timeZone, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+    const flaskRes = await axios.post(FLASK_URL, txData);
+    const { risk, is_fraud } = flaskRes.data;
+    const tx = new Transaction({ ...txData, created_at: isoTime, risk_level: risk, is_fraud });
 
-        // Use the original date to get the UTC hour for the Flask API
-        txData.time = incomingDate.getUTCHours(); 
-        
-        const flaskRes = await axios.post(FLASK_URL, txData);
-        const { risk, is_fraud } = flaskRes.data;
-
-        // Use the newly formatted IST string for 'created_at'
-        const tx = new Transaction({ ...txData, created_at: createdAtIST, risk_level: risk, is_fraud });
-    // --- END: MODIFIED SECTION ---
-
-        if (risk === "Low" || risk === "High") {
-          appendTransaction(tx);
-          return res.status(201).json({ tx });
-        }
-
-        if (risk === "Medium") {
-          console.log("🛡 Medium risk detected. Answer verification required.");
-          return res.status(200).json({ tx, verification_required: true });
-        }
-    } else {
-        // Handle cases where time is not provided or is in a wrong format
-        return res.status(400).json({ error: "Invalid or missing 'time' field." });
+    if (risk === "Low" || risk === "High") {
+      appendTransaction(tx);
+      return res.status(201).json({ tx });
     }
 
+    if (risk === "Medium") {
+      console.log("🛡 Medium risk detected. Answer verification required.");
+      return res.status(200).json({ tx, verification_required: true });
+    }
   } catch (err) {
     console.error("Error in /transactions:", err);
     res.status(500).json({ error: err.message });
   }
 });
-
 
 app.post("/verify-transaction", async (req, res) => {
   const { answer, transaction } = req.body;
@@ -110,7 +98,6 @@ app.post("/verify-transaction", async (req, res) => {
     return res.status(500).json({ verified: false, error: "Verification error" });
   }
 });
-
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
