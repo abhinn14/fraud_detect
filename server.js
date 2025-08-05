@@ -66,7 +66,7 @@ app.post("/transactions", async (req, res) => {
 app.post("/verify-transaction", async (req, res) => {
   const { answer, lastestTransaction } = req.body;
 
-  if (!answer || !transaction) {
+  if (!answer || !lastestTransaction) {
     console.error("⛔️ Missing 'answer' or 'transaction' in request.");
     return res.status(400).json({ verified: false, error: "Missing required data" });
   }
