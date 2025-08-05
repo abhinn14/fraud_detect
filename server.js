@@ -38,7 +38,8 @@ app.post("/transactions", async (req, res) => {
     const txData = { ...req.body };
     const flaskRes = await axios.post(FLASK_URL, txData);
     const { risk, is_fraud } = flaskRes.data;
-    const tx = new Transaction({ ...txData, risk_level: risk, is_fraud });
+    const isoTime = requestData.time;
+    const tx = new Transaction({ ...txData, created_at: isoTime, risk_level: risk, is_fraud });
 
     if (risk === "Low" || risk === "High") {
       appendTransaction(tx);
