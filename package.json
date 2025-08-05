@@ -21,8 +21,10 @@
     "express": "^5.1.0",
     "flask": "^0.2.10",
     "fs": "^0.0.1-security",
-    "nodemon": "^3.1.10",
     "pg": "^8.16.3",
     "twilio": "^5.8.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }
