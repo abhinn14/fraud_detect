@@ -12,10 +12,29 @@ const app = express();
 const PORT = 5000;
 const CSV_FILE = "./data/transactions.csv";
 const FLASK_URL = "https://fraudy.onrender.com/assess";
-
-
+const CSV_FILE2 = "./sms.csv";
 app.use(cors());
+
 app.use(bodyParser.json());
+app.use(express.json());
+
+function readSms() {
+  // Check if the file exists
+  if (!fs.existsSync(CSV_FILE2)) {
+    return [];
+  }
+
+  // Read the CSV file content
+  const csvData = fs.readFileSync(CSV_FILE2);
+
+  // Parse the CSV data into an array of objects
+  const records = parse(csvData, {
+    columns: true, // Use the first row as headers
+    skip_empty_lines: true,
+  });
+
+  return records;
+}
 
 function readTransactions() {
   if (!fs.existsSync(CSV_FILE)) return [];
@@ -93,6 +112,21 @@ app.post("/verify-transaction", async (req, res) => {
     appendTransaction(new Transaction(finalTxData));
     return res.status(500).json({ verified: false, error: "Verification error" });
   }
+});
+
+
+app.get("/sms", (req, res) => {
+  try {
+    const smsMessages = readSms();
+    res.json(smsMessages);
+  } catch (error) {
+    console.error("Error reading SMS data:", error);
+    res.status(500).json({ error: "Failed to fetch SMS data" });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server listening at http://localhost:${PORT}`);
 });
 
 app.listen(PORT, () => {
