@@ -147,7 +147,7 @@ app.post("/api/check-sms", async (req, res) => {
         .join("\n");
 
     // 2) Instantiate the basic Gemini model
-    const model = google("gemini-1.0-basic");
+    const model = google("models/gemini-pro");
 
     // 3) Call generateText from the ai SDK
     const { text } = await generateText({
