@@ -128,7 +128,6 @@ app.get("/sms", (req, res) => {
     res.status(500).json({ error: "Failed to load SMS data" });
   }
 });
-
 app.post("/api/check-sms", async (req, res) => {
   try {
     const smsMessages = req.body.messages;
@@ -136,33 +135,33 @@ app.post("/api/check-sms", async (req, res) => {
       return res.status(400).json({ error: "Request body must have a 'messages' array" });
     }
     if (!smsMessages.length) {
-      return res.json({ label: 1 }); // No messages = no fraud
+      return res.json({ label: 1 });
     }
 
-    // Format messages into prompt text
-    const content = smsMessages.map((msg, i) => `Message ${i + 1}: "${msg}"`).join("\n");
+    // Build one flat prompt string
+    const promptText =
+      "You are a scam-detection assistant. If there is any fraudulent SMS in the list, reply with exactly '0'. Otherwise reply with exactly '1'.\n\n" +
+      smsMessages.map((msg, i) => `Message ${i + 1}: "${msg}"`).join("\n");
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    // Get the Gemini Pro model
+    const model = genAI.getModel("models/gemini-pro");
 
-    const result = await model.generateContent([
-      {
-        role: "user",
-        parts: [
-          {
-            text: `You are a scam-detection assistant. If there is any fraudulent SMS in the list, reply with exactly "0". Otherwise reply with exactly "1".\n\n${content}`
-          }
-        ]
-      }
-    ]);
+    // Call generateContent with the correct payload
+    const result = await model.generateContent(
+      [{ content: promptText }],
+      { temperature: 0 }
+    );
 
-    const reply = result.response.text().trim();
+    // Extract the text reply
+    // Gemini returns candidates → pick the first
+    const reply = result.candidates[0].content.trim();
     const match = reply.match(/[01]/);
-    const label = match ? Number(match[0]) : 0; // Default to scam if malformed
+    const label = match ? Number(match[0]) : 0;
 
-    res.json({ label });
+    return res.json({ label });
   } catch (err) {
     console.error("Error in /api/check-sms:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
