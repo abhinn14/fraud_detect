@@ -133,35 +133,33 @@ app.get("/sms", (req, res) => {
 app.post("/api/check-sms", async (req, res) => {
   try {
     const smsMessages = req.body.messages;
+
     if (!Array.isArray(smsMessages)) {
       return res.status(400).json({ error: "Request body must have a 'messages' array" });
     }
+
     if (smsMessages.length === 0) {
-      return res.json({ label: 1 }); // no messages -> no fraud
+      return res.json({ label: 1 }); // no messages → no fraud
     }
 
-    // 1) Build one big prompt string
+    // Build prompt
     const promptText =
       "You are a scam-detection assistant. If there is any fraudulent SMS in the list, reply with exactly '0'. Otherwise reply with exactly '1'.\n\n" +
-      smsMessages
-        .map((msg, idx) => `Message ${idx + 1}: "${msg}"`)
-        .join("\n");
+      smsMessages.map((msg, i) => `Message ${i + 1}: "${msg}"`).join("\n");
 
-    // 2) Instantiate the basic Gemini model
-    const model = google({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY, // 👈 Ensure your env variable is set
-  model: "gemini-pro",                // ✅ valid model name
-});
-    // 3) Call generateText from the ai SDK
+    // 👇 The model is a string, NOT an object
+    const model = google("gemini-pro");
+
+    // Generate text
     const { text } = await generateText({
       model,
       prompt: promptText,
-      // you can also pass providerOptions.google if you need safetySettings, etc.
+      apiKey: process.env.GOOGLE_API_KEY, // 👈 pass apiKey here, not in google()
     });
 
-    // 4) Parse out the digit
+    // Extract 0 or 1
     const match = text.trim().match(/[01]/);
-    const label = match ? Number(match[0]) : 0; // default to 0=scam
+    const label = match ? Number(match[0]) : 0;
 
     return res.json({ label });
   } catch (err) {
