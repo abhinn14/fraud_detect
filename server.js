@@ -6,7 +6,9 @@ import axios from "axios";
 import { Transaction } from "./models/Transaction.js";
 import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
+
 import dotenv from "dotenv";
 dotenv.config();
 const app = express();
@@ -15,6 +17,7 @@ const PORT = 5000;
 const CSV_FILE = "./data/transactions.csv";
 const CSV_FILE2 = "./sms.csv";
 const FLASK_URL = "https://fraudy.onrender.com/assess";
+
 app.use(cors());
 
 app.use(bodyParser.json());
@@ -128,35 +131,37 @@ app.get("/sms", (req, res) => {
     res.status(500).json({ error: "Failed to load SMS data" });
   }
 });
+
 app.post("/api/check-sms", async (req, res) => {
   try {
     const smsMessages = req.body.messages;
     if (!Array.isArray(smsMessages)) {
       return res.status(400).json({ error: "Request body must have a 'messages' array" });
     }
-    if (!smsMessages.length) {
-      return res.json({ label: 1 });
+    if (smsMessages.length === 0) {
+      return res.json({ label: 1 }); // no messages -> no fraud
     }
 
-    // Build one flat prompt string
+    // 1) Build one big prompt string
     const promptText =
       "You are a scam-detection assistant. If there is any fraudulent SMS in the list, reply with exactly '0'. Otherwise reply with exactly '1'.\n\n" +
-      smsMessages.map((msg, i) => `Message ${i + 1}: "${msg}"`).join("\n");
+      smsMessages
+        .map((msg, idx) => `Message ${idx + 1}: "${msg}"`)
+        .join("\n");
 
-    // Get the Gemini Pro model
-    const model = genAI.getModel("models/gemini-1.0");
+    // 2) Instantiate the basic Gemini model
+    const model = google("gemini-1.0-basic");
 
-    // Call generateContent with the correct payload
-    const result = await model.generateContent(
-      [{ content: promptText }],
-      { temperature: 0 }
-    );
+    // 3) Call generateText from the ai SDK
+    const { text } = await generateText({
+      model,
+      prompt: promptText,
+      // you can also pass providerOptions.google if you need safetySettings, etc.
+    });
 
-    // Extract the text reply
-    // Gemini returns candidates → pick the first
-    const reply = result.candidates[0].content.trim();
-    const match = reply.match(/[01]/);
-    const label = match ? Number(match[0]) : 0;
+    // 4) Parse out the digit
+    const match = text.trim().match(/[01]/);
+    const label = match ? Number(match[0]) : 0; // default to 0=scam
 
     return res.json({ label });
   } catch (err) {
@@ -164,7 +169,6 @@ app.post("/api/check-sms", async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
