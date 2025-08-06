@@ -6,8 +6,9 @@ import axios from "axios";
 import { Transaction } from "./models/Transaction.js";
 import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
-import { google } from "@ai-sdk/google";
-import { generateText } from "ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -142,28 +143,22 @@ app.post("/api/check-sms", async (req, res) => {
       return res.json({ label: 1 }); // no messages → no fraud
     }
 
-    // Build prompt
     const promptText =
       "You are a scam-detection assistant. If there is any fraudulent SMS in the list, reply with exactly '0'. Otherwise reply with exactly '1'.\n\n" +
       smsMessages.map((msg, i) => `Message ${i + 1}: "${msg}"`).join("\n");
 
-    // 👇 The model is a string, NOT an object
-    const model = google("gemini-pro");
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-    // Generate text
-    const { text } = await generateText({
-      model,
-      prompt: promptText,
-      apiKey: process.env.GOOGLE_API_KEY, // 👈 pass apiKey here, not in google()
-    });
+    const result = await model.generateContent(promptText);
+    const response = await result.response;
+    const text = response.text();
 
-    // Extract 0 or 1
     const match = text.trim().match(/[01]/);
     const label = match ? Number(match[0]) : 0;
 
     return res.json({ label });
   } catch (err) {
-    console.error("Error in /api/check-sms:", err);
+    console.error("❌ Error in /api/check-sms:", err);
     return res.status(500).json({ error: err.message });
   }
 });
