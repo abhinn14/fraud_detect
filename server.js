@@ -120,7 +120,7 @@ const openai = new OpenAI({
 });
 
 
-app.post("/check-sms", async (req, res) => {
+app.post("/api/check-sms", async (req, res) => {
   try {
     const smsMessages = req.body.messages;
     if (!Array.isArray(smsMessages)) {
