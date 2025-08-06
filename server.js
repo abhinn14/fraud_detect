@@ -13,7 +13,7 @@ import { OpenAI } from "openai";
 const app = express();
 const PORT = 5000;
 const CSV_FILE = "./data/transactions.csv";
-const CSV_FILE2 = "//sms.csv";
+const CSV_FILE2 = "./sms.csv";
 const FLASK_URL = "https://fraudy.onrender.com/assess";
 app.use(cors());
 
