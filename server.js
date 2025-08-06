@@ -129,6 +129,7 @@ app.get("/sms", (req, res) => {
   }
 });
 
+
 app.post("/api/check-sms", async (req, res) => {
   try {
     const smsMessages = req.body.messages;
@@ -147,8 +148,10 @@ app.post("/api/check-sms", async (req, res) => {
         .join("\n");
 
     // 2) Instantiate the basic Gemini model
-    const model = google("models/gemini-pro");
-
+    const model = google({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY, // 👈 Ensure your env variable is set
+  model: "gemini-pro",                // ✅ valid model name
+});
     // 3) Call generateText from the ai SDK
     const { text } = await generateText({
       model,
