@@ -144,7 +144,7 @@ app.post("/api/check-sms", async (req, res) => {
       smsMessages.map((msg, i) => `Message ${i + 1}: "${msg}"`).join("\n");
 
     // Get the Gemini Pro model
-    const model = genAI.getModel("models/gemini-pro");
+    const model = genAI.getModel("models/gemini-1.0");
 
     // Call generateContent with the correct payload
     const result = await model.generateContent(
