@@ -6,11 +6,11 @@ import axios from "axios";
 import { Transaction } from "./models/Transaction.js";
 import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
 dotenv.config();
-import { OpenAI } from "openai";
-
 const app = express();
+
 const PORT = 5000;
 const CSV_FILE = "./data/transactions.csv";
 const CSV_FILE2 = "./sms.csv";
@@ -116,9 +116,7 @@ app.post("/verify-transaction", async (req, res) => {
   }
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,  // or leave blank to pull from OPENAI_API_KEY env var
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 
 app.get("/sms", (req, res) => {
@@ -131,7 +129,6 @@ app.get("/sms", (req, res) => {
   }
 });
 
-
 app.post("/api/check-sms", async (req, res) => {
   try {
     const smsMessages = req.body.messages;
@@ -139,48 +136,32 @@ app.post("/api/check-sms", async (req, res) => {
       return res.status(400).json({ error: "Request body must have a 'messages' array" });
     }
     if (!smsMessages.length) {
-      // no messages → no fraud
-      return res.json({ label: 1 });
+      return res.json({ label: 1 }); // No messages = no fraud
     }
 
-    // ——————————————————————————————
-    // 1. One‐shot overall prompt:
-    // ——————————————————————————————
-    const prompt = [
-      {
-        role: "system",
-        content:
-          "You are a scam-detection assistant. If there is any fraudulent SMS in the list, reply with exactly '0'. Otherwise reply with exactly '1'."
-      },
+    // Format messages into prompt text
+    const content = smsMessages.map((msg, i) => `Message ${i + 1}: "${msg}"`).join("\n");
+
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+    const result = await model.generateContent([
       {
         role: "user",
-        content: smsMessages
-          .map((msg, i) => `Message ${i+1}: "${msg}"`)
-          .join("\n")
+        parts: [
+          {
+            text: `You are a scam-detection assistant. If there is any fraudulent SMS in the list, reply with exactly "0". Otherwise reply with exactly "1".\n\n${content}`
+          }
+        ]
       }
-    ];
+    ]);
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: prompt,
-      temperature: 0,
-      max_tokens: 5
-    });
-
-    // ——————————————————————————————
-    // 2. Extract the single digit
-    // ——————————————————————————————
-    const reply = completion.choices[0].message.content.trim();
+    const reply = result.response.text().trim();
     const match = reply.match(/[01]/);
-    const label = match ? Number(match[0]) : 0; 
-    // default to 0=scam if model mis-formats
+    const label = match ? Number(match[0]) : 0; // Default to scam if malformed
 
-    // ——————————————————————————————
-    // 3. Return it
-    // ——————————————————————————————
     res.json({ label });
   } catch (err) {
-    console.error("Error in /sms-check:", err);
+    console.error("Error in /api/check-sms:", err);
     res.status(500).json({ error: err.message });
   }
 });
