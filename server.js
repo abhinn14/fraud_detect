@@ -13,6 +13,7 @@ import { OpenAI } from "openai";
 const app = express();
 const PORT = 5000;
 const CSV_FILE = "./data/transactions.csv";
+const CSV_FILE2 = "//sms.csv";
 const FLASK_URL = "https://fraudy.onrender.com/assess";
 app.use(cors());
 
@@ -117,6 +118,17 @@ app.post("/verify-transaction", async (req, res) => {
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,  // or leave blank to pull from OPENAI_API_KEY env var
+});
+
+
+app.get("/sms", (req, res) => {
+  try {
+    const smsMessages = readSms();           // readSms() returns an array of { header: value, … }
+    res.json(smsMessages);                   // send it straight back
+  } catch (err) {
+    console.error("Error in GET /sms:", err);
+    res.status(500).json({ error: "Failed to load SMS data" });
+  }
 });
 
 
