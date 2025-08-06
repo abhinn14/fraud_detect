@@ -14,7 +14,6 @@ const app = express();
 const PORT = 5000;
 const CSV_FILE = "./data/transactions.csv";
 const FLASK_URL = "https://fraudy.onrender.com/assess";
-const CSV_FILE2 = "./sms.csv";
 app.use(cors());
 
 app.use(bodyParser.json());
@@ -120,11 +119,16 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,  // or leave blank to pull from OPENAI_API_KEY env var
 });
 
-app.get("/sms-check", async (req, res) => {
+
+app.post("/check-sms", async (req, res) => {
   try {
-    const smsMessages = readSms();
+    const smsMessages = req.body.messages;
+    if (!Array.isArray(smsMessages)) {
+      return res.status(400).json({ error: "Request body must have a 'messages' array" });
+    }
     if (!smsMessages.length) {
-      return res.json({ label: 1 });   // no messages → no fraud
+      // no messages → no fraud
+      return res.json({ label: 1 });
     }
 
     // ——————————————————————————————
@@ -139,12 +143,12 @@ app.get("/sms-check", async (req, res) => {
       {
         role: "user",
         content: smsMessages
-          .map((row, i) => `Message ${i+1}: "${row.body}"`)
+          .map((msg, i) => `Message ${i+1}: "${msg}"`)
           .join("\n")
       }
     ];
 
-    const completion = await openai.createChatCompletion({
+    const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: prompt,
       temperature: 0,
@@ -154,10 +158,10 @@ app.get("/sms-check", async (req, res) => {
     // ——————————————————————————————
     // 2. Extract the single digit
     // ——————————————————————————————
-    const reply = completion.data.choices[0].message.content.trim();
+    const reply = completion.choices[0].message.content.trim();
     const match = reply.match(/[01]/);
     const label = match ? Number(match[0]) : 0; 
-    // (default to 0=scam if model mis-formats)
+    // default to 0=scam if model mis-formats
 
     // ——————————————————————————————
     // 3. Return it
