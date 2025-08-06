@@ -6,7 +6,9 @@ import axios from "axios";
 import { Transaction } from "./models/Transaction.js";
 import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
-import { formatInTimeZone } from 'date-fns-tz';
+import dotenv from "dotenv";
+dotenv.config();
+import { OpenAI } from "openai";
 
 const app = express();
 const PORT = 5000;
@@ -114,20 +116,59 @@ app.post("/verify-transaction", async (req, res) => {
   }
 });
 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,  // or leave blank to pull from OPENAI_API_KEY env var
+});
 
-app.get("/sms", (req, res) => {
+app.get("/sms-check", async (req, res) => {
   try {
     const smsMessages = readSms();
-    res.json(smsMessages);
-  } catch (error) {
-    console.error("Error reading SMS data:", error);
-    res.status(500).json({ error: "Failed to fetch SMS data" });
+    if (!smsMessages.length) {
+      return res.json({ label: 1 });   // no messages → no fraud
+    }
+
+    // ——————————————————————————————
+    // 1. One‐shot overall prompt:
+    // ——————————————————————————————
+    const prompt = [
+      {
+        role: "system",
+        content:
+          "You are a scam-detection assistant. If there is any fraudulent SMS in the list, reply with exactly '0'. Otherwise reply with exactly '1'."
+      },
+      {
+        role: "user",
+        content: smsMessages
+          .map((row, i) => `Message ${i+1}: "${row.body}"`)
+          .join("\n")
+      }
+    ];
+
+    const completion = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: prompt,
+      temperature: 0,
+      max_tokens: 5
+    });
+
+    // ——————————————————————————————
+    // 2. Extract the single digit
+    // ——————————————————————————————
+    const reply = completion.data.choices[0].message.content.trim();
+    const match = reply.match(/[01]/);
+    const label = match ? Number(match[0]) : 0; 
+    // (default to 0=scam if model mis-formats)
+
+    // ——————————————————————————————
+    // 3. Return it
+    // ——————————————————————————————
+    res.json({ label });
+  } catch (err) {
+    console.error("Error in /sms-check:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening at http://localhost:${PORT}`);
-});
 
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
