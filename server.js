@@ -119,9 +119,6 @@ app.post("/verify-transaction", async (req, res) => {
   }
 });
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-
 app.get("/sms", (req, res) => {
   try {
     const smsMessages = readSms();           // readSms() returns an array of { header: value, … }
